@@ -79,7 +79,7 @@
         </xacro:inertial_cylinder>
     </link>
     <!-- FRONT LEFT WHEEL LINK -->
-    <joint name="front_left_wheel_joint" type="continuous">
+    <joint name="front_left_wheel_joint" type="fixed">
         <parent link="base_link"/>
         <child link="front_left_wheel"/>
         <origin xyz="0.20 0.175 0" rpy="-${pi/2} 0 0" />
@@ -104,7 +104,7 @@
     </link>
     <!-- FRONT RIGHT WHEEL LINK -->
 
-    <joint name="front_right_wheel_joint" type="continuous">
+    <joint name="front_right_wheel_joint" type="fixed">
         <parent link="base_link"/>
         <child link="front_right_wheel"/>
         <origin xyz="0.20 -0.175 0" rpy="${pi/2} 0 0" />
