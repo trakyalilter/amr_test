@@ -1,5 +1,6 @@
 import os
-
+import math
+from tf_transformations import quaternion_from_euler
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription, TimerAction
@@ -78,21 +79,31 @@ def generate_launch_description():
             )
         ]
     )
-    static_tf_caster1 = Node(
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        arguments=['0.20', '0.175', '0', '0', '0', '0', 'base_link', 'front_left_wheel']
-    )
+        # Convert RPY (roll, pitch, yaw) to Quaternion
+    roll = -math.pi / 2  # Roll = pi/2
+    pitch = 0          # Pitch = 0
+    yaw = 0            # Yaw = 0
+    quaternion = quaternion_from_euler(roll, pitch, yaw)  # Returns (x, y, z, w)
+static_tf_front_right_wheel
     
-    static_tf_caster2 = Node(
+    roll = math.pi / 2  # Roll = pi/2
+    quaternion = quaternion_from_euler(roll, pitch, yaw)  # Returns (x, y, z, w)
+    static_tf_front_left_wheel = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
-        arguments=['0.2', '-0.175', '0', '0', '0', '0', 'base_link', 'front_right_wheel']
+        arguments=[
+            '0.20', '0.175', '0',            # XYZ position
+            str(quaternion[0]),               # Quaternion x
+            str(quaternion[1]),               # Quaternion y
+            str(quaternion[2]),               # Quaternion z
+            str(quaternion[3]),               # Quaternion w
+            'base_link', 'front_left_wheel'  # Parent and child frame
+        ]
     )
     return LaunchDescription([
         rsp,
-        static_tf_caster1,
-        static_tf_caster2,# Start RSP immediately
+        static_tf_front_left_wheel,
+        static_tf_front_right_wheel,# Start RSP immediately
         rviz2,
         gazebo,     # Start Gazebo after 2 seconds
         spawn_entity  # Start spawn_entity after 4 seconds
