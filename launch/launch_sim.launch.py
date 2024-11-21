@@ -84,20 +84,30 @@ def generate_launch_description():
     pitch = 0          # Pitch = 0
     yaw = 0            # Yaw = 0
     quaternion = quaternion_from_euler(roll, pitch, yaw)  # Returns (x, y, z, w)
-static_tf_front_right_wheel
-    
+    static_tf_front_left_wheel = Node(
+    package='tf2_ros',
+    executable='static_transform_publisher',
+    arguments=[
+        '0.20', '0.175', '0',            # XYZ position
+        str(quaternion[0]),               # Quaternion x
+        str(quaternion[1]),               # Quaternion y
+        str(quaternion[2]),               # Quaternion z
+        str(quaternion[3]),               # Quaternion w
+        'base_link', 'front_left_wheel'  # Parent and child frame
+    ]
+    )
     roll = math.pi / 2  # Roll = pi/2
     quaternion = quaternion_from_euler(roll, pitch, yaw)  # Returns (x, y, z, w)
-    static_tf_front_left_wheel = Node(
+    static_tf_front_right_wheel = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
         arguments=[
-            '0.20', '0.175', '0',            # XYZ position
+            '0.20', '-0.175', '0',            # XYZ position
             str(quaternion[0]),               # Quaternion x
             str(quaternion[1]),               # Quaternion y
             str(quaternion[2]),               # Quaternion z
             str(quaternion[3]),               # Quaternion w
-            'base_link', 'front_left_wheel'  # Parent and child frame
+            'base_link', 'front_right_wheel'  # Parent and child frame
         ]
     )
     return LaunchDescription([
