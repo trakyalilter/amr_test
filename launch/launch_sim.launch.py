@@ -81,7 +81,8 @@ def generate_launch_description():
 
     return LaunchDescription([
         rsp,        # Start RSP immediately
+        rviz2,
         gazebo,     # Start Gazebo after 2 seconds
-        spawn_entity,  # Start spawn_entity after 4 seconds
-        rviz2       # Start RViz2 after 6 seconds
+        spawn_entity  # Start spawn_entity after 4 seconds
+
     ])
