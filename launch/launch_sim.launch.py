@@ -78,9 +78,21 @@ def generate_launch_description():
             )
         ]
     )
-
+    static_tf_caster1 = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        arguments=['0.20', '0.175', '0', '0', '0', '0', 'base_link', 'front_left_wheel']
+    )
+    
+    static_tf_caster2 = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        arguments=['0.2', '-0.175', '0', '0', '0', '0', 'base_link', 'front_right_wheel']
+    )
     return LaunchDescription([
-        rsp,        # Start RSP immediately
+        rsp,
+        static_tf_caster1,
+        static_tf_caster2,# Start RSP immediately
         rviz2,
         gazebo,     # Start Gazebo after 2 seconds
         spawn_entity  # Start spawn_entity after 4 seconds
