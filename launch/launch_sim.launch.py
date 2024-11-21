@@ -9,7 +9,7 @@ from launch_ros.actions import Node
 def generate_launch_description():
     package_name = 'amr_test'
 
-    # RSP launch
+    # RSP launch (starts immediately)
     rsp = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
             os.path.join(
@@ -21,38 +21,48 @@ def generate_launch_description():
         launch_arguments={'use_sim_time': 'true'}.items()
     )
 
-    # Gazebo launch with a custom world
-    gazebo = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([
-            os.path.join(
-                get_package_share_directory('gazebo_ros'), 
-                'launch', 
-                'gazebo.launch.py'
+    # Gazebo launch with a 2-second delay
+    gazebo = TimerAction(
+        period=2.0,  # 2-second delay
+        actions=[
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource([
+                    os.path.join(
+                        get_package_share_directory('gazebo_ros'), 
+                        'launch', 
+                        'gazebo.launch.py'
+                    )
+                ]),
+                launch_arguments={
+                    'world': os.path.join(
+                        get_package_share_directory(package_name), 
+                        'worlds', 
+                        'amr_test.world'
+                    )
+                }.items()
             )
-        ]),
-        launch_arguments={
-            'world': os.path.join(
-                get_package_share_directory(package_name), 
-                'worlds', 
-                'amr_test.world'
-            )
-        }.items()
+        ]
     )
 
-    # Spawn the robot entity in Gazebo
-    spawn_entity = Node(
-        package='gazebo_ros',
-        executable='spawn_entity.py',
-        arguments=[
-            '-topic', 'robot_description',
-            '-entity', 'my_bot'
-        ],
-        output='screen'
+    # Spawn the robot entity with a 2-second delay
+    spawn_entity = TimerAction(
+        period=4.0,  # 4 seconds (after Gazebo starts)
+        actions=[
+            Node(
+                package='gazebo_ros',
+                executable='spawn_entity.py',
+                arguments=[
+                    '-topic', 'robot_description',
+                    '-entity', 'my_bot'
+                ],
+                output='screen'
+            )
+        ]
     )
 
-    # RViz2 launch with a delay
+    # RViz2 launch with a 2-second delay
     rviz2 = TimerAction(
-        period=2.5,  # Delay (in seconds) before starting RViz2
+        period=6.0,  # 6 seconds (after spawn_entity starts)
         actions=[
             Node(
                 package='rviz2',
@@ -70,8 +80,8 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        rsp,
-        gazebo,
-        spawn_entity,
-        rviz2,  # RViz2 starts after a delay
+        rsp,        # Start RSP immediately
+        gazebo,     # Start Gazebo after 2 seconds
+        spawn_entity,  # Start spawn_entity after 4 seconds
+        rviz2       # Start RViz2 after 6 seconds
     ])
