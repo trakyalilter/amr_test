@@ -79,43 +79,68 @@ def generate_launch_description():
             )
         ]
     )
-        # Convert RPY (roll, pitch, yaw) to Quaternion
-    roll = -math.pi / 2  # Roll = pi/2
-    pitch = 0          # Pitch = 0
-    yaw = 0            # Yaw = 0
-    quaternion = quaternion_from_euler(roll, pitch, yaw)  # Returns (x, y, z, w)
+
+    # Convert RPY (roll, pitch, yaw) to Quaternion for static transforms
+    roll, pitch, yaw = -math.pi / 2, 0, 0
+    quaternion_left = quaternion_from_euler(roll, pitch, yaw)
     static_tf_front_left_wheel = Node(
-    package='tf2_ros',
-    executable='static_transform_publisher',
-    arguments=[
-        '0.20', '0.175', '0',            # XYZ position
-        str(quaternion[0]),               # Quaternion x
-        str(quaternion[1]),               # Quaternion y
-        str(quaternion[2]),               # Quaternion z
-        str(quaternion[3]),               # Quaternion w
-        'base_link', 'front_left_wheel'  # Parent and child frame
-    ]
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        arguments=[
+            '0.20', '0.175', '0',              # XYZ position
+            str(quaternion_left[0]),           # Quaternion x
+            str(quaternion_left[1]),           # Quaternion y
+            str(quaternion_left[2]),           # Quaternion z
+            str(quaternion_left[3]),           # Quaternion w
+            'base_link', 'front_left_wheel'    # Parent and child frame
+        ]
     )
-    roll = math.pi / 2  # Roll = pi/2
-    quaternion = quaternion_from_euler(roll, pitch, yaw)  # Returns (x, y, z, w)
+
+    roll = math.pi / 2
+    quaternion_right = quaternion_from_euler(roll, pitch, yaw)
     static_tf_front_right_wheel = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
         arguments=[
-            '0.20', '-0.175', '0',            # XYZ position
-            str(quaternion[0]),               # Quaternion x
-            str(quaternion[1]),               # Quaternion y
-            str(quaternion[2]),               # Quaternion z
-            str(quaternion[3]),               # Quaternion w
-            'base_link', 'front_right_wheel'  # Parent and child frame
+            '0.20', '-0.175', '0',             # XYZ position
+            str(quaternion_right[0]),          # Quaternion x
+            str(quaternion_right[1]),          # Quaternion y
+            str(quaternion_right[2]),          # Quaternion z
+            str(quaternion_right[3]),          # Quaternion w
+            'base_link', 'front_right_wheel'   # Parent and child frame
         ]
     )
-    return LaunchDescription([
-        rsp,
-        static_tf_front_left_wheel,
-        static_tf_front_right_wheel,# Start RSP immediately
-        rviz2,
-        gazebo,     # Start Gazebo after 2 seconds
-        spawn_entity  # Start spawn_entity after 4 seconds
 
+    # SLAM Toolbox launch with an 8-second delay
+    slam_toolbox = TimerAction(
+        period=8.0,  # 8 seconds (after RViz2 starts)
+        actions=[
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource([
+                    os.path.join(
+                        get_package_share_directory('slam_toolbox'),
+                        'launch',
+                        'online_async_launch.py'
+                    )
+                ]),
+                launch_arguments={
+                    'params_file': os.path.join(
+                        get_package_share_directory(package_name),
+                        'config',
+                        'mapper_params_online_async.yaml'
+                    ),
+                    'use_sim_time': 'true'
+                }.items()
+            )
+        ]
+    )
+
+    return LaunchDescription([
+        rsp,                                # Start RSP immediately
+        static_tf_front_left_wheel,        # Publish transform for front left wheel
+        static_tf_front_right_wheel,       # Publish transform for front right wheel
+        gazebo,                             # Start Gazebo after 2 seconds
+        spawn_entity,                       # Spawn robot after 4 seconds
+        rviz2,                              # Start RViz2 after 6 seconds
+        slam_toolbox                        # Start SLAM Toolbox after 8 seconds
     ])
