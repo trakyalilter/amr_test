@@ -27,29 +27,28 @@ class MapViewer(Node):
         self.ui.show()
         # Process the map data to display
         self.update_ui()
-	def update_ui(self):
+    def update_ui(self):
         if self.map_data:
-		    # Convert OccupancyGrid data to numpy array
-		    width = self.map_data.info.width
-		    height = self.map_data.info.height
-		    map_array = np.array(self.map_data.data).reshape((height, width))
+            width = self.map_data.info.width
+            height = self.map_data.info.height
+            map_array = np.array(self.map_data.data).reshape((height, width))
 
-		    # Flip the map vertically (flip along the Y-axis)
-		    map_array = np.flipud(map_array)
+		    
+            map_array = np.flipud(map_array)
 
-		    # Map free (0) -> white, occupied (100) -> black, unknown (-1) -> gray
-		    display_map = np.zeros_like(map_array, dtype=np.uint8)
-		    display_map[map_array == 0] = 255  # Free space -> White
-		    display_map[map_array == 100] = 0  # Occupied -> Black
-		    display_map[map_array == -1] = 127  # Unknown -> Gray
+		    
+            display_map = np.zeros_like(map_array, dtype=np.uint8)
+            display_map[map_array == 0] = 255  # Free space -> White
+            display_map[map_array == 100] = 0  # Occupied -> Black
+            display_map[map_array == -1] = 127  # Unknown -> Gray
 
-		    # Convert numpy array to QImage for display
-		    height, width = display_map.shape
-		    qimage = QImage(display_map.data, width, height, QImage.Format_Grayscale8)
-		    pixmap = QPixmap.fromImage(qimage)
+            # Convert numpy array to QImage for display
+            height, width = display_map.shape
+            qimage = QImage(display_map.data, width, height, QImage.Format_Grayscale8)
+            pixmap = QPixmap.fromImage(qimage)
 
-		    # Update the UI with the new pixmap (map image)
-		    self.ui.set_map(pixmap)
+            # Update the UI with the new pixmap (map image)
+            self.ui.set_map(pixmap)
 
 
     def run(self):
@@ -105,4 +104,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
