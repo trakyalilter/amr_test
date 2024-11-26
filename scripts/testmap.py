@@ -42,13 +42,13 @@ class MapViewer(Node):
             self.get_logger().info(f"Map dimensions: {width}x{height}, resolution: {resolution} m/pixel")
 
             # Convert OccupancyGrid data to numpy array
-            map_array = np.array(self.map_data.data).reshape((height, width))
+            map_array = np.array(self.map_data.data).reshape(( height,width))
 
             # Debug: Ensure reshaped map aligns with expected dimensions
             self.get_logger().info(f"Map array shape: {map_array.shape}")
 
             # Flip the map vertically to align with PyQt's coordinate system
-            map_array = np.flipud(map_array)
+            # map_array = np.flipud(map_array)
 
             # Map free (0) -> white, occupied (100) -> black, unknown (-1) -> gray
             display_map = np.zeros_like(map_array, dtype=np.uint8)
@@ -60,14 +60,14 @@ class MapViewer(Node):
             scale_factor = max(1, min(int(10 / resolution), 100))  # Clamp scale to [1, 100]
             scaled_map = cv2.resize(
                 display_map,
-                (width * scale_factor, height * scale_factor),
+                (width * 4, height * 4),
                 interpolation=cv2.INTER_NEAREST
             )
 
             # Convert numpy array to QImage for display
             scaled_height, scaled_width = scaled_map.shape
             qimage = QImage(
-                scaled_map.data, scaled_width, scaled_height, QImage.Format_Grayscale8
+                scaled_map.data, scaled_width,scaled_height, QImage.Format_Grayscale8
             )
             pixmap = QPixmap.fromImage(qimage)
 
