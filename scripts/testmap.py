@@ -6,7 +6,7 @@ import numpy as np
 from PyQt5.QtCore import Qt, QThread
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QApplication, QWidget, QGraphicsView, QGraphicsScene, QVBoxLayout, QLabel
-
+import opencv as cv2
 class MapViewer(Node):
     def __init__(self):
         super().__init__('map_viewer')
@@ -28,27 +28,39 @@ class MapViewer(Node):
         # Process the map data to display
         self.update_ui()
     def update_ui(self):
+        """Update the UI with the new map data."""
         if self.map_data:
+            # Convert OccupancyGrid data to numpy array
             width = self.map_data.info.width
             height = self.map_data.info.height
             map_array = np.array(self.map_data.data).reshape((height, width))
 
-		    
+            # Flip the map vertically (flip along the Y-axis)
             map_array = np.flipud(map_array)
 
-		    
+            # Map free (0) -> white, occupied (100) -> black, unknown (-1) -> gray
             display_map = np.zeros_like(map_array, dtype=np.uint8)
             display_map[map_array == 0] = 255  # Free space -> White
             display_map[map_array == 100] = 0  # Occupied -> Black
             display_map[map_array == -1] = 127  # Unknown -> Gray
 
-            # Convert numpy array to QImage for display
+            # Consider map resolution for scaling (assuming it is in meters)
+            resolution = self.map_data.info.resolution
+            # Scaling factor based on resolution (example: 10px = 1 meter)
+            scale_factor = 10 / resolution  # 10 pixels for each meter, adjust this factor as necessary
+
+            # Scale the map to respect resolution
             height, width = display_map.shape
-            qimage = QImage(display_map.data, width, height, QImage.Format_Grayscale8)
+            scaled_display_map = cv2.resize(display_map, (int(width * scale_factor), int(height * scale_factor)), interpolation=cv2.INTER_NEAREST)
+
+            # Convert numpy array to QImage for display
+            scaled_height, scaled_width = scaled_display_map.shape
+            qimage = QImage(scaled_display_map.data, scaled_width, scaled_height, QImage.Format_Grayscale8)
             pixmap = QPixmap.fromImage(qimage)
 
             # Update the UI with the new pixmap (map image)
             self.ui.set_map(pixmap)
+
 
 
     def run(self):
