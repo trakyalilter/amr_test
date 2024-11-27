@@ -6,6 +6,7 @@ from rclpy.action import ActionClient
 from nav2_msgs.action import NavigateToPose
 from nav_msgs.msg import OccupancyGrid, Path
 from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped  # For AMCL pose
+from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 import numpy as np
 import cv2  # OpenCV for image processing
 from PyQt5.QtCore import Qt, QPoint, pyqtSignal
@@ -16,7 +17,7 @@ from tf_transformations import quaternion_from_euler
 class MapViewer(Node):
     def __init__(self):
         super().__init__('map_viewer')
-
+        self.navigator = BasicNavigator()
         # Initialize subscribers
         self.create_subscription(OccupancyGrid, '/map', self.map_callback, 10)
         self.create_subscription(Path, '/plan', self.plan_callback, 10)
@@ -176,10 +177,39 @@ class MapViewer(Node):
             goal_pose.pose.orientation.z = quaternion[2]
             goal_pose.pose.orientation.w = quaternion[3]
 
-            self.send_nav2_goal(goal_pose)
-            # Publish the goal pose
-            self.goal_publisher.publish(goal_pose)
-            self.get_logger().info(f"Published goal pose: ({map_x}, {map_y}) with orientation: {angle} radians")
+
+            self.navigator.setInitialPose(self.robot_position)
+            self.navigator.waitUntilNav2Active()
+            self.navigator.goToPose(goal_pose)
+
+            self.robot_status = "Navigating to goal..."
+            self.ui.update_status(self.robot_status)
+
+            self.monitor_navigation()
+
+    def monitor_navigation(self):
+        """Monitor the navigation status and update the UI."""
+        while not self.navigator.isTaskComplete():
+            # You can fetch feedback here if needed
+            feedback = self.navigator.getFeedback()
+            if feedback:
+                self.robot_status = f"Navigating... Distance remaining: {feedback.distance_remaining:.2f} meters"
+                self.ui.update_status(self.robot_status)
+
+        # Check the final result
+        result = self.navigator.getResult()
+        if result == TaskResult.SUCCEEDED:
+            self.robot_status = "Goal reached successfully!"
+        elif result == TaskResult.FAILED:
+            self.robot_status = "Goal failed!"
+        elif result == TaskResult.CANCELED:
+            self.robot_status = "Goal was canceled!"
+        else:
+            self.robot_status = "Unknown result status!"
+
+        # Update the UI
+        self.ui.update_status(self.robot_status)
+
     def send_nav2_goal(self, goal_pose):
         """Send the navigation goal to the Nav2 action server."""
         if not self.navigate_action_client.wait_for_server(timeout_sec=5.0):
