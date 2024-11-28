@@ -1,4 +1,6 @@
 import sys
+import json
+import os
 import threading  # To manage ROS2 in a separate thread
 import rclpy
 from rclpy.node import Node
@@ -45,6 +47,9 @@ class MapViewer(Node):
         self.path = None  # Store the latest path
         self.robot_position = None  # Store the robot's current position
         self.stations = []
+        self.load_stations_from_json()
+        import atexit
+        atexit.register(self.save_stations_to_json)
     def add_station(self, position):
         """Handle adding a station to the map."""
         if self.map_data:
@@ -70,7 +75,52 @@ class MapViewer(Node):
             station_data["button"] = button
             self.stations.append(station_data)
 
+            # Save stations to JSON
+            self.save_stations_to_json()
+
             self.get_logger().info(f"Station added at map coordinates: ({map_x}, {map_y})")
+    def save_stations_to_json(self):
+        """Save stations to a JSON file."""
+        stations_data = []
+        for station in self.stations:
+            stations_data.append({
+                "map_position": station["map_position"]
+            })
+
+        with open("stations.json", "w") as json_file:
+            json.dump(stations_data, json_file, indent=4)
+        self.get_logger().info("Stations saved to stations.json")
+
+    def load_stations_from_json(self):
+        """Load stations from a JSON file."""
+        if not os.path.exists("stations.json"):
+            self.get_logger().info("No stations.json file found. Starting with no stations.")
+            return
+
+        with open("stations.json", "r") as json_file:
+            stations_data = json.load(json_file)
+
+        for station_data in stations_data:
+            map_x, map_y = station_data["map_position"]
+
+            # Convert map coordinates to pixel position for the UI
+            resolution = self.map_data.info.resolution
+            origin_x, origin_y = self.map_data.info.origin.position.x, self.map_data.info.origin.position.y
+            scale_factor = self.scale_factor
+            pixel_x = int((map_x - origin_x) / resolution * scale_factor)
+            pixel_y = int((self.ui.map_metadata["height"] - (map_y - origin_y) / resolution) * scale_factor)
+
+            # Add station button
+            button = self.ui.add_station_button(QPoint(pixel_x, pixel_y))
+            button.clicked.connect(lambda: self.send_amr_to_station(map_x, map_y))
+
+            # Save station data to self.stations
+            self.stations.append({
+                "map_position": (map_x, map_y),
+                "button": button
+            })
+        self.get_logger().info("Stations loaded from stations.json")
+
     def send_amr_to_station(self, map_x, map_y):
         """Send the AMR to the selected station."""
         quaternion = quaternion_from_euler(0, 0, 90) # Default orientation
