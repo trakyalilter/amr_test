@@ -27,12 +27,13 @@ class MapViewer(Node):
 
         # Initialize publisher for the goal pose
         self.goal_publisher = self.create_publisher(PoseStamped, '/goal_pose', 10)
-        self.ui.add_station_signal.connect(self.add_station)
+        
         # Initialize the PyQt application
         self.app = QApplication(sys.argv)
 
         # Create the MapNavigationApp widget and connect mouse click signals
         self.ui = MapNavigationApp()
+        self.ui.add_station_signal.connect(self.add_station)
         self.ui.map_clicked_and_dragged.connect(self.send_goal_pose)
 
         self.robot_status = "Idle, waiting for a goal..."
