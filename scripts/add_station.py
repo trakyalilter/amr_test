@@ -16,6 +16,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel
 from tf_transformations import quaternion_from_euler
 from PyQt5.QtGui import QPainter, QColor, QPen, QBrush
 from PyQt5.QtWidgets import QPushButton
+from PyQt5.QtWidgets import QInputDialog, QMessageBox
 class MapViewer(Node):
     def __init__(self):
         super().__init__('map_viewer')
@@ -52,39 +53,52 @@ class MapViewer(Node):
         atexit.register(self.save_stations_to_json)
     def add_station(self, position):
         """Handle adding a station to the map."""
-        if self.map_data:
-            resolution = self.map_data.info.resolution
-            origin_x, origin_y = self.map_data.info.origin.position.x, self.map_data.info.origin.position.y
-            scale_factor = self.scale_factor
+        if not self.map_data:
+            QMessageBox.warning(self.ui, "Error", "Map data is not available yet!")
+            return
 
-            # Convert pixel position to map coordinates
-            map_x = (position.x() / scale_factor) * resolution + origin_x
-            map_y = (self.ui.map_metadata["height"] - position.y() / scale_factor) * resolution + origin_y
+        # Ask the user for the station name
+        station_name, ok = QInputDialog.getText(self.ui, "Set Station Name", "Enter station name:")
+        if not ok or not station_name.strip():
+            QMessageBox.warning(self.ui, "Error", "Station name cannot be empty!")
+            return
 
-            # Store station data (map position and UI button)
-            station_data = {
-                "map_position": (map_x, map_y),
-                "button": None  # Placeholder for button reference
-            }
+        resolution = self.map_data.info.resolution
+        origin_x, origin_y = self.map_data.info.origin.position.x, self.map_data.info.origin.position.y
+        scale_factor = self.scale_factor
 
-            # Add button to the UI overlay
-            button = self.ui.add_station_button(position)
-            button.clicked.connect(lambda: self.send_amr_to_station(map_x, map_y))
+        # Convert pixel position to map coordinates
+        map_x = (position.x() / scale_factor) * resolution + origin_x
+        map_y = (self.ui.map_metadata["height"] - position.y() / scale_factor) * resolution + origin_y
 
-            # Save button reference in station data
-            station_data["button"] = button
-            self.stations.append(station_data)
+        # Store station data (map position and UI button)
+        station_data = {
+            "map_position": (map_x, map_y),
+            "name": station_name,  # Save station name
+            "button": None  # Placeholder for button reference
+        }
 
-            # Save stations to JSON
-            self.save_stations_to_json()
+        # Add button to the UI overlay
+        button = self.ui.add_station_button(position)
+        button.setText(station_name)  # Set button text as station name
+        button.clicked.connect(lambda: self.send_amr_to_station(map_x, map_y))
 
-            self.get_logger().info(f"Station added at map coordinates: ({map_x}, {map_y})")
+        # Save button reference in station data
+        station_data["button"] = button
+        self.stations.append(station_data)
+
+        # Save stations to JSON
+        self.save_stations_to_json()
+
+        self.get_logger().info(f"Station '{station_name}' added at map coordinates: ({map_x}, {map_y})")
+
     def save_stations_to_json(self):
         """Save stations to a JSON file."""
         stations_data = []
         for station in self.stations:
             stations_data.append({
-                "map_position": station["map_position"]
+                "map_position": station["map_position"],
+                "name": station.get("name", "Unnamed Station")  # Save the name
             })
 
         with open("stations.json", "w") as json_file:
@@ -102,6 +116,7 @@ class MapViewer(Node):
 
         for station_data in stations_data:
             map_x, map_y = station_data["map_position"]
+            station_name = station_data.get("name", "Unnamed Station")  # Get the name or default to "Unnamed Station"
 
             # Convert map coordinates to pixel position for the UI
             resolution = self.map_data.info.resolution
@@ -112,13 +127,16 @@ class MapViewer(Node):
 
             # Add station button
             button = self.ui.add_station_button(QPoint(pixel_x, pixel_y))
+            button.setText(station_name)  # Set the button text as the station name
             button.clicked.connect(lambda: self.send_amr_to_station(map_x, map_y))
 
             # Save station data to self.stations
             self.stations.append({
                 "map_position": (map_x, map_y),
+                "name": station_name,
                 "button": button
             })
+
         self.get_logger().info("Stations loaded from stations.json")
 
     def send_amr_to_station(self, map_x, map_y):
@@ -413,8 +431,7 @@ class MapNavigationApp(QWidget):
     def add_station_button(self, position):
         """Add a button to the map to represent a station."""
         button = QPushButton(self)
-        button.setText("Station")
-        button.setGeometry(position.x(), position.y(), 80, 30)  # Position and size of button
+        button.setGeometry(position.x(), position.y(), 50, 50)  # Position and size of the button
         button.show()
         return button
     def mousePressEvent(self, event):
