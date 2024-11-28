@@ -73,7 +73,7 @@ class MapViewer(Node):
             self.get_logger().info(f"Station added at map coordinates: ({map_x}, {map_y})")
     def send_amr_to_station(self, map_x, map_y):
         """Send the AMR to the selected station."""
-        quaternion = quaternion_from_euler(0, 0, 0)  # Default orientation
+        quaternion = quaternion_from_euler(0, 0, 90) # Default orientation
 
         # Create a PoseStamped message for the goal
         goal_pose = PoseStamped()
@@ -87,7 +87,7 @@ class MapViewer(Node):
         goal_pose.pose.orientation.z = quaternion[2]
         goal_pose.pose.orientation.w = quaternion[3]
 
-        self.send_nav2_goal(goal_pose)
+        # self.send_nav2_goal(goal_pose)
         self.goal_publisher.publish(goal_pose)
         self.get_logger().info(f"AMR sent to station at: ({map_x}, {map_y})")
     def place_docking_station(self, x, y):
@@ -227,7 +227,7 @@ class MapViewer(Node):
             goal_pose.pose.orientation.z = quaternion[2]
             goal_pose.pose.orientation.w = quaternion[3]
 
-            self.send_nav2_goal(goal_pose)
+            # self.send_nav2_goal(goal_pose)
             # Publish the goal pose
             self.goal_publisher.publish(goal_pose)
             self.get_logger().info(f"Published goal pose: ({map_x}, {map_y}) with orientation: {angle} radians")
