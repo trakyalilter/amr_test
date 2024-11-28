@@ -87,6 +87,7 @@ class MapViewer(Node):
         goal_pose.pose.orientation.w = quaternion[3]
 
         self.send_nav2_goal(goal_pose)
+        self.goal_publisher.publish(goal_pose)
         self.get_logger().info(f"AMR sent to station at: ({map_x}, {map_y})")
     def place_docking_station(self, x, y):
         """Place a docking station."""
