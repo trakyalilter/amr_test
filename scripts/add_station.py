@@ -81,7 +81,7 @@ class MapViewer(Node):
         # Add button to the UI overlay
         button = self.ui.add_station_button(position)
         button.setText(station_name)  # Set button text as station name
-        button.clicked.connect(lambda: self.send_amr_to_station(map_x, map_y))
+        button.clicked.connect(lambda: self.send_amr_to_station(map_x, map_y,station_name))
 
         # Save button reference in station data
         station_data["button"] = button
@@ -128,7 +128,7 @@ class MapViewer(Node):
             # Add station button
             button = self.ui.add_station_button(QPoint(pixel_x, pixel_y))
             button.setText(station_name)  # Set the button text as the station name
-            button.clicked.connect(lambda: self.send_amr_to_station(map_x, map_y))
+            button.clicked.connect(lambda: self.send_amr_to_station(map_x, map_y,station_name))
 
             # Save station data to self.stations
             self.stations.append({
@@ -140,7 +140,7 @@ class MapViewer(Node):
         self.get_logger().info("Stations loaded from stations.json")
         self.isDataLoaded = True
 
-    def send_amr_to_station(self, map_x, map_y):
+    def send_amr_to_station(self, map_x, map_y,station_name):
         """Send the AMR to the selected station."""
         quaternion = quaternion_from_euler(0, 0, 90) # Default orientation
 
@@ -158,6 +158,8 @@ class MapViewer(Node):
 
         # self.send_nav2_goal(goal_pose)
         self.goal_publisher.publish(goal_pose)
+        self.robot_status = f"Sending AMR to {station_name}"
+        self.ui.update_status(self.robot_status)
         self.get_logger().info(f"AMR sent to station at: ({map_x}, {map_y})")
     def place_docking_station(self, x, y):
         """Place a docking station."""
@@ -302,6 +304,8 @@ class MapViewer(Node):
 
             # self.send_nav2_goal(goal_pose)
             # Publish the goal pose
+            self.robot_status = f"Sending AMR to ({map_x}, {map_y}) with orientation: {angle} radians"
+            self.ui.update_status(self.robot_status)
             self.goal_publisher.publish(goal_pose)
             self.get_logger().info(f"Published goal pose: ({map_x}, {map_y}) with orientation: {angle} radians")
     def send_nav2_goal(self, goal_pose):
