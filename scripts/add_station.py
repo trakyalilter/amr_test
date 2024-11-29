@@ -20,7 +20,7 @@ from PyQt5.QtWidgets import QInputDialog, QMessageBox
 class MapViewer(Node):
     def __init__(self):
         super().__init__('map_viewer')
-
+        self.isDataLoaded = False
         # Initialize subscribers
         self.create_subscription(OccupancyGrid, '/map', self.map_callback, 10)
         self.create_subscription(Path, '/plan', self.plan_callback, 10)
@@ -48,7 +48,7 @@ class MapViewer(Node):
         self.path = None  # Store the latest path
         self.robot_position = None  # Store the robot's current position
         self.stations = []
-        self.load_stations_from_json()
+        # self.load_stations_from_json()
         import atexit
         atexit.register(self.save_stations_to_json)
     def add_station(self, position):
@@ -138,6 +138,7 @@ class MapViewer(Node):
             })
 
         self.get_logger().info("Stations loaded from stations.json")
+        self.isDataLoaded = True
 
     def send_amr_to_station(self, map_x, map_y):
         """Send the AMR to the selected station."""
@@ -166,6 +167,10 @@ class MapViewer(Node):
         """Callback function to process map data from the /map topic."""
         self.get_logger().info("Received map data")
         self.map_data = msg
+        if self.isDataLoaded == False:
+            self.load_stations_from_json()
+
+        
         self.update_ui()
 
     def plan_callback(self, msg):
