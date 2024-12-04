@@ -1,12 +1,33 @@
+#!/usr/bin/env python3
 import os
 import math
-from tf_transformations import quaternion_from_euler
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription, TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 
+import numpy as np # Scientific computing library for Python
+ 
+def get_quaternion_from_euler(roll, pitch, yaw):
+    """
+    Convert an Euler angle to a quaternion.
+    
+    Input
+    :param roll: The roll (rotation around x-axis) angle in radians.
+    :param pitch: The pitch (rotation around y-axis) angle in radians.
+    :param yaw: The yaw (rotation around z-axis) angle in radians.
+    
+    Output
+    :return qx, qy, qz, qw: The orientation in quaternion [x,y,z,w] format
+    """
+    qx = np.sin(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) - np.cos(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
+    qy = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
+    qz = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
+    qw = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
+    
+    return [qx, qy, qz, qw]
+  
 def generate_launch_description():
     package_name = 'amr_test'
 
@@ -82,7 +103,7 @@ def generate_launch_description():
 
     # Convert RPY (roll, pitch, yaw) to Quaternion for static transforms
     roll, pitch, yaw = -math.pi / 2, 0, 0
-    quaternion_left = quaternion_from_euler(roll, pitch, yaw)
+    quaternion_left = get_quaternion_from_euler(roll, pitch, yaw)
     static_tf_front_left_wheel = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
@@ -97,7 +118,7 @@ def generate_launch_description():
     )
 
     roll = math.pi / 2
-    quaternion_right = quaternion_from_euler(roll, pitch, yaw)
+    quaternion_right = get_quaternion_from_euler(roll, pitch, yaw)
     static_tf_front_right_wheel = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
