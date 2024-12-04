@@ -7,7 +7,8 @@ from geometry_msgs.msg import PoseWithCovarianceStamped  # Assuming PoseWithCova
 import paho.mqtt.client as mqtt
 import json
 import threading
-from nav2_simple_commander.robot_navigator import BasicNavigator
+from nav2_simple_commander.robot_navigator import BasicNavigator,TaskResult
+from rclpy.duration import Duration
 
 
 class MapMQTTPublisher(Node):
@@ -30,6 +31,7 @@ class MapMQTTPublisher(Node):
         self.mqtt_topic_costmap = "robot/costmap"
         self.mqtt_topic_send_robot = "robot/sendrobot"
 
+        self.mqtt_topic_nav_status = "robot/navstatus"
         # Setup MQTT
         self.setup_mqtt()
 
@@ -98,6 +100,34 @@ class MapMQTTPublisher(Node):
         goal_pose.pose.orientation.w = data['sendRobot']['orientation']['w']
 
         self.nav.goToPose(goal_pose)
+        i = 0
+        while not self.nav.isTaskComplete():
+            feedback = self.nav.getFeedback()
+            if feedback and i % 5 == 0:
+                "self.sendStatus() instead of print"
+                print(
+                    'Estimated time to complete current route: '
+                    + '{0:.0f}'.format(
+                        Duration.from_msg(feedback.estimated_time_remaining).nanoseconds
+                        / 1e9
+                    )
+                    + ' seconds.'
+                )
+
+                # Some failure mode, must stop since the robot is clearly stuck
+                if Duration.from_msg(feedback.navigation_time) > Duration(
+                    seconds=180.0
+                ):
+                    print('Navigation has exceeded timeout of 180s, canceling request.')
+                    self.nav.cancelTask()
+        result = self.nav.getResult()
+        if result == TaskResult.SUCCEEDED:
+            print('Route complete! Restarting...')
+        elif result == TaskResult.CANCELED:
+            print('Security route was canceled, exiting.')
+            exit(1)
+        elif result == TaskResult.FAILED:
+            print('Security route failed! Restarting from other side...')
 
     def costmap_callback(self, msg):
         costmap_data = {
