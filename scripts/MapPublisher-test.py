@@ -84,6 +84,12 @@ class MapMQTTPublisher(Node):
             if "sendRobot" in data:
                 self.send_robot_to_pose(data)
 
+
+    def sendStatus(self,msg:str):
+        status_msg = {
+            "status_message":msg
+        }
+        self.mqtt_client.publish(self.mqtt_topic_nav_status, json.dumps(status_msg), qos=0)
     def send_robot_to_pose(self, data):
         """Send the robot to the specified pose."""
         self.get_logger().info(f"Sending Robot To Pose!!!")
@@ -100,35 +106,34 @@ class MapMQTTPublisher(Node):
         goal_pose.pose.orientation.w = data['sendRobot']['orientation']['w']
 
         self.nav.goToPose(goal_pose)
-        i = 0
-        while not self.nav.isTaskComplete():
+        self.create_timer(0.5, self.update_status)
+
+    def update_status(self):
+        """Update the navigation status."""
+        if not self.nav.isTaskComplete():
             feedback = self.nav.getFeedback()
-            if feedback and i % 5 == 0:
-                "self.sendStatus() instead of print"
-                print(
+            if feedback:
+                msg = (
                     'Estimated time to complete current route: '
-                    + '{0:.0f}'.format(
-                        Duration.from_msg(feedback.estimated_time_remaining).nanoseconds
-                        / 1e9
-                    )
+                    + '{0:.0f}'.format(Duration.from_msg(feedback.estimated_time_remaining).nanoseconds / 1e9)
                     + ' seconds.'
                 )
+                self.sendStatus(msg)
 
-                # Some failure mode, must stop since the robot is clearly stuck
-                if Duration.from_msg(feedback.navigation_time) > Duration(
-                    seconds=180.0
-                ):
-                    print('Navigation has exceeded timeout of 180s, canceling request.')
+                # If navigation takes too long, cancel it
+                if Duration.from_msg(feedback.navigation_time) > Duration(seconds=180.0):
+                    self.sendStatus("Navigation has exceeded timeout of 180s, canceling request.")
                     self.nav.cancelTask()
-        result = self.nav.getResult()
-        if result == TaskResult.SUCCEEDED:
-            print('Route complete! Restarting...')
-        elif result == TaskResult.CANCELED:
-            print('Security route was canceled, exiting.')
-            exit(1)
-        elif result == TaskResult.FAILED:
-            print('Security route failed! Restarting from other side...')
-
+        else:
+            # Handle task completion
+            result = self.nav.getResult()
+            if result == TaskResult.SUCCEEDED:
+                self.sendStatus('Route complete!')
+            elif result == TaskResult.CANCELED:
+                self.sendStatus('Security route was canceled, exiting.')
+                exit(1)
+            elif result == TaskResult.FAILED:
+                self.sendStatus('Security route failed! Restarting from other side...')
     def costmap_callback(self, msg):
         costmap_data = {
             "costmap_info": {
