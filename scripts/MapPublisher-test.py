@@ -17,7 +17,7 @@ class MapMQTTPublisher(Node):
 
         # Initialize navigator
         self.nav = BasicNavigator()
-
+        self.initial_pose_publisher = self.create_publisher(PoseWithCovarianceStamped,'/initialpose',1)
         # Thread-safe queue for MQTT data
         self.mqtt_queue = queue.Queue()
 
@@ -32,6 +32,8 @@ class MapMQTTPublisher(Node):
         self.mqtt_topic_send_robot = "robot/sendrobot"
 
         self.mqtt_topic_nav_status = "robot/navstatus"
+        self.mqtt_topic_pathing = "robot/Pathing"
+        self.mqtt_topic_initial_pose = "robot/initialPose"
         # Setup MQTT
         self.setup_mqtt()
 
@@ -66,7 +68,9 @@ class MapMQTTPublisher(Node):
     def on_mqtt_connect(self, client, userdata, flags, rc):
         """Callback when the MQTT client connects to the broker."""
         if rc == 0:
-            client.subscribe(self.mqtt_topic_send_robot, qos=0)
+            client.subscribe(self.mqtt_topic_send_robot, qos=1)
+            client.subscribe(self.mqtt_topic_pathing, qos=1)
+            client.subscribe(self.mqtt_topic_initial_pose, qos=1)
             self.get_logger().info(f"MQTT connected successfully. Subscribing to topic: {self.mqtt_topic_send_robot}")
         else:
             self.get_logger().error(f"MQTT connection failed with code {rc}")
@@ -83,13 +87,30 @@ class MapMQTTPublisher(Node):
             data = self.mqtt_queue.get()
             if "sendRobot" in data:
                 self.send_robot_to_pose(data)
+            if "Pathing" in data:
+                self.Pathing(data)
+            if "initialPose" in data:
+                self.publishInitialPose(data)
 
-
+    def publishInitialPose(self,data):
+        x = data['initialPose']['x']
+        y = data['initialPose']['y']
+        orientation = data['initialPose']['orientation']
+        msg = PoseWithCovarianceStamped()
+        msg.header.frame_id = 'map'
+        msg.pose.pose.position.x = x
+        msg.pose.pose.position.y = y
+        msg.pose.pose.orientation.x = orientation['x']
+        msg.pose.pose.orientation.y = orientation['y']
+        msg.pose.pose.orientation.z = orientation['z']
+        msg.pose.pose.orientation.w = orientation['w']
+        self.get_logger().info(f"Published Initial Pose: x:{x} y:{y} orientation:{orientation['x']} {orientation['y']} {orientation['z']}{ orientation['w']}")
+        self.initial_pose_publisher.publish(msg)
     def sendStatus(self,msg:str):
         status_msg = {
             "status_message":msg
         }
-        self.mqtt_client.publish(self.mqtt_topic_nav_status, json.dumps(status_msg), qos=0)
+        #self.mqtt_client.publish(self.mqtt_topic_nav_status, json.dumps(status_msg), qos=0)
     def send_robot_to_pose(self, data):
         """Send the robot to the specified pose."""
         self.get_logger().info(f"Sending Robot To Pose!!!")
@@ -106,7 +127,7 @@ class MapMQTTPublisher(Node):
         goal_pose.pose.orientation.w = data['sendRobot']['orientation']['w']
 
         self.nav.goToPose(goal_pose)
-        self.create_timer(0.5, self.update_status)
+        self.create_timer(1, self.update_status)
 
     def update_status(self):
         """Update the navigation status."""
@@ -134,6 +155,27 @@ class MapMQTTPublisher(Node):
                 exit(1)
             elif result == TaskResult.FAILED:
                 self.sendStatus('Security route failed! Restarting from other side...')
+    def Pathing(self,data):
+        goal_poses = []
+        
+
+        points = data['Pathing']
+        for point in points:
+            goal_pose = PoseStamped()
+            goal_pose.header.frame_id = 'map'
+            goal_pose.header.stamp = self.nav.get_clock().now().to_msg()
+            goal_pose.pose.position.x = point['x']
+            goal_pose.pose.position.y = point['y']
+            goal_pose.pose.position.z = 0.0
+            goal_pose.pose.orientation.x = 0.0
+            goal_pose.pose.orientation.y = 0.0
+            goal_pose.pose.orientation.z = 0.0
+            goal_pose.pose.orientation.w = 1.0
+            goal_poses.append(goal_pose)
+        self.get_logger().info(f"Points:{len(goal_poses)}")
+        #path = self.nav.getPathThroughPoses(initial_pose, goal_poses)
+        self.nav.goThroughPoses(goal_poses)
+
     def costmap_callback(self, msg):
         costmap_data = {
             "costmap_info": {
